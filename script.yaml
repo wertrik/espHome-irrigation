@@ -3,7 +3,7 @@ sequence:
   - service: notify.telegram 
     data:
       message: >-
-        Závlaha spuštěna
+        Irrigation starts
 
         Today's maximum temperature : {{ states('sensor.maximum_daily_temperature') }} C
 
