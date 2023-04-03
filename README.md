@@ -37,3 +37,6 @@ HA changes time of duration of each zone in controller.
 
 In yaml files you need to set you credentials, maybe there are some Czech words.
 To set time threshold in HA I'm using helpers - "input number" (e.g. input_number.irrigation_zone_3_threshold_time).
+
+![simple](https://user-images.githubusercontent.com/79766288/229622904-3cd84893-b9fc-4526-b818-ed826a37467a.jpg)
+
