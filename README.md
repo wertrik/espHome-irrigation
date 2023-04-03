@@ -1,5 +1,5 @@
 # espHome-irrigation
-Home Assistant - espHome - irrigation system
+## Home Assistant - espHome - irrigation system
 
 ![20230323_121348_2](https://user-images.githubusercontent.com/79766288/229623131-cf039229-a7f0-44b5-9ab9-34fef1082871.jpg)
 
@@ -23,20 +23,20 @@ I neeed controll 4 zones, so I use four relays. First zone is not used in irriga
 So if you have other use case you need change code.
 
 Controller works this way:
-User can manually set duration of each zone.
-User can manually start and stop each zone.
-User can manually start program. Program contains zone 2,3,4.
-User can manually stop program/HA program.
-There is no option to schedule program - you can start program in actual time.
-To abort running program you need hold abort btn for 3 second (LED 6 indicates timeout).
+- User can manually set duration of each zone.
+- User can manually start and stop each zone.
+- User can manually start program. Program contains zone 2,3,4.
+- User can manually stop program/HA program.
+- There is no option to schedule program - you can start program in actual time.
+- To abort running program you need hold abort btn for 3 second (LED 6 indicates timeout).
 
-Im using Scheduler in HomeAssistant.
-In HA Im counting duration of each zone - based of rainfall, outdoor tempearature etc.
-In HA I set time threshold for each zone, next I count duration for zones, HomeAssistant send time of duration to controller and starts program.
-Running program in controller is independent of HomeAssistant.
+- Im using Scheduler in HomeAssistant.
+- In HA Im counting duration of each zone - based of rainfall, outdoor tempearature etc.
+- In HA I set time threshold for each zone, next I count duration for zones, HomeAssistant send time of duration to controller and starts program.
+- Running program in controller is independent of HomeAssistant.
 
-In controller you can not change thresholds in HA.
-HA changes time of duration of each zone in controller.
+- In controller you can not change thresholds in HA.
+- HA changes time of duration of each zone in controller.
 
 In yaml files you need to set you credentials, maybe there are some Czech words.
 To set time threshold in HA I'm using helpers - "input number" (e.g. input_number.irrigation_zone_3_threshold_time).
