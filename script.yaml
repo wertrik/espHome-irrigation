@@ -19,8 +19,8 @@ sequence:
         states('input_number.irrigation_zone_4_threshold_time') }} )
 
         Consider the weather: {{
-        iif(is_state('input_boolean.irrigation_adjust_by_weather', 'on'), 'Ano',
-        'Ne') }}
+        iif(is_state('input_boolean.irrigation_adjust_by_weather', 'on'), 'Yes',
+        'No') }}
   - service: counter.increment
     data: {}
     target:
