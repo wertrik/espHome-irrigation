@@ -12,7 +12,9 @@ four relay module
 Key&Led module (https://www.aliexpress.com/item/32725359463.html)
 
 espHome main components used:
-https://esphome.io/components/display/tm1638.html
+
+https://esphome.io/components/display/tm1638.html 
+
 https://esphome.io/guides/automations.html#script-component
 
 I neeed controll 4 zones, so I use four relays. First zone is not used in irrigation program.
