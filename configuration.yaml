@@ -1,0 +1,63 @@
+
+
+sensor:
+  - platform: template
+    sensors:
+      irrigation_next_date_to_ctr:
+        friendly_name: "Irrigation next date to controller"
+        value_template: >
+          {% if (state_attr('schedule.irrigation_schedule', 'next_event') != None) %}
+            {{ as_timestamp(state_attr('schedule.irrigation_schedule', 'next_event')) | timestamp_custom('%d.%m.%H.%M') }}
+          {% else %}
+            off
+          {% endif %}
+        icon_template: mdi:calendar-clock
+
+
+template:
+  - binary_sensor:
+      - name: "Irrigation"
+        icon: >
+          {% if is_state('binary_sensor.irrigation_controller_v2_status', 'off') %}
+            mdi:water-off
+          {% else %}
+            mdi:water-check
+          {% endif %}
+        state: >
+          {{ is_state('binary_sensor.irrigation_controller_v2_status', 'on') }}
+      - name: "Irrigation Zone 2"
+        icon: >
+          {% if is_state('switch.irrigation_controller_v2_zone_2', 'on') %}
+            mdi:sprinkler-variant
+          {% else %}
+            mdi:water-off
+          {% endif %}
+        state: >
+          {{ is_state('switch.irrigation_controller_v2_zone_2', 'on') }}
+      - name: "Irrigation Zone 3"
+        icon: >
+          {% if is_state('switch.irrigation_controller_v2_zone_3', 'on') %}
+            mdi:sprinkler-variant
+          {% else %}
+            mdi:water-off
+          {% endif %}
+        state: >
+          {{ is_state('switch.irrigation_controller_v2_zone_3', 'on') }}
+      - name: "Irrigation Zone 4"
+        icon: >
+          {% if is_state('switch.irrigation_controller_v2_zone_4', 'on') %}
+            mdi:sprinkler-variant
+          {% else %}
+            mdi:water-off
+          {% endif %}
+        state: >
+          {{ is_state('switch.irrigation_controller_v2_zone_4', 'on') }}
+      - name: "Irrigation today"
+        icon: >
+          {% if ((state_attr('schedule.irrigation_schedule', 'next_event') != None) and (as_timestamp(state_attr('schedule.irrigation_schedule', 'next_event'))|timestamp_custom('%d.%m.%Y') == as_timestamp(now())|timestamp_custom('%d.%m.%Y') )) %}
+            mdi:water-check
+          {% else %}
+            mdi:water-off
+          {% endif %}
+        state: >
+          {{ ((state_attr('schedule.irrigation_schedule', 'next_event') != None) and (as_timestamp(state_attr('schedule.irrigation_schedule', 'next_event'))|timestamp_custom('%d.%m.%Y') == as_timestamp(now())|timestamp_custom('%d.%m.%Y') )) }}

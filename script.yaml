@@ -1,0 +1,95 @@
+alias: Irrigation v2
+sequence:
+  - service: notify.telegram 
+    data:
+      message: >-
+        Závlaha spuštěna
+
+        Today's maximum temperature : {{ states('sensor.maximum_daily_temperature') }} C
+
+        Taday's rainfall: {{ states('sensor.srazky_za_den') }} mm
+
+        Zone 2: {{ zone_2_threshold }} minut ( {{
+        states('input_number.irrigation_zone_2_threshold_time') }} )
+
+        Zone 3: {{ zone_3_threshold }} minut ( {{
+        states('input_number.irrigation_zone_3_threshold_time') }} )
+
+        Zone 4: {{ zone_4_threshold }} minut ( {{
+        states('input_number.irrigation_zone_4_threshold_time') }} )
+
+        Consider the weather: {{
+        iif(is_state('input_boolean.irrigation_adjust_by_weather', 'on'), 'Ano',
+        'Ne') }}
+  - service: counter.increment
+    data: {}
+    target:
+      entity_id: counter.irrigation_counter
+  - service: number.set_value
+    data:
+      value: "{{ (zone_2_threshold|int) }}"
+    target:
+      entity_id: number.irrigation_controller_v2_zone_2_threshold_time
+  - service: number.set_value
+    data:
+      value: "{{ (zone_3_threshold|int) }}"
+    target:
+      entity_id: number.irrigation_controller_v2_zone_3_threshold_time
+  - service: number.set_value
+    data:
+      value: "{{ (zone_4_threshold|int) }}"
+    target:
+      entity_id: number.irrigation_controller_v2_zone_4_threshold_time
+  - service: button.press
+    data: {}
+    target:
+      entity_id: button.irrigation_controller_v2_program_start
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 10
+      milliseconds: 0
+  - wait_for_trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.irrigation_controller_v2_status
+        from: "on"
+        to: "off"
+    timeout:
+      hours: 1
+      minutes: 30
+      seconds: 0
+      milliseconds: 0
+  - service: select.select_option
+    data:
+      option: zone_0
+    target:
+      entity_id: select.irrigation_water_consumption
+  - service: notify.telegram 
+    data:
+      message: |-
+        Irrigation off
+variables:
+  zone_2_threshold: >-
+    {{ iif( is_state('input_boolean.irrigation_adjust_by_weather', 'on'),
+    (iif((states('input_number.irrigation_zone_2_threshold_time')|int -
+    (states('sensor.srazky_za_den')|float/0.15)|int ) < 0, 0,
+    (states('input_number.irrigation_zone_2_threshold_time')|int -
+    (states('sensor.srazky_za_den')|float/0.15))|int )),
+    states('input_number.irrigation_zone_2_threshold_time')|int)  }}
+  zone_3_threshold: >-
+    {{ iif( is_state('input_boolean.irrigation_adjust_by_weather', 'on'),
+    (iif((states('input_number.irrigation_zone_3_threshold_time')|int -
+    (states('sensor.srazky_za_den')|float/0.15)|int ) < 0, 0,
+    (states('input_number.irrigation_zone_3_threshold_time')|int -
+    (states('sensor.srazky_za_den')|float/0.15))|int )),
+    states('input_number.irrigation_zone_3_threshold_time')|int)  }}
+  zone_4_threshold: >-
+    {{ iif( is_state('input_boolean.irrigation_adjust_by_weather', 'on'),
+    (iif((states('input_number.irrigation_zone_4_threshold_time')|int -
+    (states('sensor.srazky_za_den')|float/0.3)|int ) < 0, 0,
+    (states('input_number.irrigation_zone_4_threshold_time')|int -
+    (states('sensor.srazky_za_den')|float/0.3))|int )),
+    states('input_number.irrigation_zone_4_threshold_time')|int)  }}
+mode: single
+icon: mdi:sprinkler

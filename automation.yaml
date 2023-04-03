@@ -1,0 +1,12 @@
+alias: Irrigation - start
+description: ""
+trigger:
+  - platform: state
+    entity_id:
+      - schedule.irrigation_schedule
+    from: "off"
+    to: "on"
+action:
+  - service: script.irrigation_v2
+    data: {}
+mode: single
