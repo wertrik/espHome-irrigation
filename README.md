@@ -28,6 +28,7 @@ User can manually start and stop each zone.
 User can manually start program. Program contains zone 2,3,4.
 User can manually stop program/HA program.
 There is no option to schedule program - you can start program in actual time.
+To abort running program you need hold abort btn for 3 second (LED 6 indicates timeout).
 
 Im using Scheduler in HomeAssistant.
 In HA Im counting duration of each zone - based of rainfall, outdoor tempearature etc.
@@ -39,6 +40,8 @@ HA changes time of duration of each zone in controller.
 
 In yaml files you need to set you credentials, maybe there are some Czech words.
 To set time threshold in HA I'm using helpers - "input number" (e.g. input_number.irrigation_zone_3_threshold_time).
+
+
 
 ![simple](https://user-images.githubusercontent.com/79766288/229622904-3cd84893-b9fc-4526-b818-ed826a37467a.jpg)
 
