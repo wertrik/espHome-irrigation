@@ -1,0 +1,905 @@
+esphome:
+  name: irrigation-controller-v2
+  friendly_name: irrigation-controller-v2
+  on_boot:
+    priority: -100
+    then:
+      - text_sensor.template.publish:
+          id: ha_txt_status
+          state: "off"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+globals:
+  - id: last_action
+    type: int
+    initial_value: "0"
+  - id: active_display
+    type: bool
+    initial_value: "false"
+  - id: threshold_value
+    type: int
+    initial_value: "0"
+  - id: timer
+    type: int[4]   # startTime, stopTime, remaining/duration, totalTime
+    initial_value: "{0,0,0,0}"
+
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: 
+
+ota:
+  password: 
+
+wifi:
+  ssid: 
+  password: 
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Irrigation-Controller-V2"
+    password: 
+
+captive_portal:
+
+time:
+  - platform: sntp
+    id: my_time
+
+select:
+  - platform: template
+    name: "Controller status"
+    id: controller_status
+    options:
+     - "OFF"
+     - "ZoneSettings"
+     - "ZoneRunning"
+     - "InternalPRG"
+     - "InternalPRGRunning"
+     - "HAPRG"
+     - "HAPRGRunning"
+    initial_option: "OFF"
+    internal: true
+    optimistic: true
+
+text_sensor:
+  - platform: homeassistant
+    name: "Next launch"
+    id: ha_next_date
+    entity_id: sensor.irrigation_next_date_to_ctr
+    internal: True
+  - platform: template
+    name: "Text status"
+    icon: "mdi:information-outline"
+    id: ha_txt_status
+    update_interval: 30s
+
+number:
+  - platform: template
+    name: "Zone 1 threshold time"
+    id: "threshold_time_1"
+    optimistic: true
+    min_value: 0
+    max_value: 20
+    step: 1
+    mode: slider
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+    restore_value: True
+    initial_value: 20
+  - platform: template
+    name: "Zone 2 threshold time"
+    id: "threshold_time_2"
+    optimistic: true
+    min_value: 0
+    max_value: 30
+    step: 1
+    mode: slider
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+    restore_value: True
+    initial_value: 20
+  - platform: template
+    name: "Zone 3 threshold time"
+    id: "threshold_time_3"
+    optimistic: true
+    min_value: 0
+    max_value: 30
+    step: 1
+    mode: slider
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+    restore_value: True
+    initial_value: 20
+  - platform: template
+    name: "Zone 4 threshold time"
+    id: "threshold_time_4"
+    optimistic: true
+    min_value: 0
+    max_value: 30
+    step: 1
+    mode: slider
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+    restore_value: True
+    initial_value: 20
+  - platform: template
+    name: "Selected zone"
+    id: "selected_zone"
+    optimistic: true
+    min_value: 0
+    max_value: 4
+    step: 1
+    internal: true
+    restore_value: false
+    initial_value: 0
+
+display:
+    platform: tm1638
+    id: tm1638_display
+    stb_pin: 5
+    clk_pin: 18
+    dio_pin: 23
+    intensity: 3
+    update_interval: 100ms
+    lambda: |-
+      if (id(active_display)) {
+
+        std::string status = id(controller_status).state.c_str();
+
+        if (status == "ZoneSettings") {
+          it.printf(0, "ZONE%1.0f %2d", id(selected_zone).state, id(threshold_value));
+        } else if (status == "ZoneRunning") {
+          it.printf(0, "LEFT %3d", id(timer)[2]);
+        } else if (status == "HAPRG") {
+          it.printf(0, "%8s", id(ha_next_date).state.c_str());
+        } else if (status == "HAPRGRunning") {
+          it.printf("%8s","");
+          it.printf(0, "HA %2d/%2d", id(timer)[2], id(timer)[3]);
+        } else if (status == "InternalPRG") {
+          it.printf(0, "ProGrAnn");
+        } else if (status == "InternalPRGRunning") {
+          it.printf(0, "In %2d/%2d", id(timer)[2], id(timer)[3]);
+        } else if (status == "OFF") {
+          it.printf(0, "ZAVLAHA2");
+        }
+
+      } else {
+        it.printf("%8s","");  
+      }
+
+switch:
+  #zona 1 aktivní
+  - platform: tm1638
+    id: led1
+    led: 0
+    internal: True
+  #zona 2 aktivní
+  - platform: tm1638
+    id: led2
+    led: 1
+    internal: True
+  #zona 3 aktivní
+  - platform: tm1638
+    id: led3
+    led: 2
+    internal: True
+  #zona 4 aktivní
+  - platform: tm1638
+    id: led4
+    led: 3
+    internal: True
+  # ulozeni ok
+  - platform: tm1638
+    id: led5
+    led: 4
+    internal: True
+  # ESC timeout
+  - platform: tm1638
+    id: led6
+    led: 5
+    internal: True
+  #HA aktivní
+  - platform: tm1638
+    id: led7
+    led: 6
+    internal: True
+  #program aktivní
+  - platform: tm1638
+    id: led8
+    led: 7
+    internal: True
+
+  # Kapénková
+  - platform: gpio
+    pin: 
+      number: 21
+      inverted: true
+    name: "Zone 1"
+    id: zone_1
+    restore_mode: ALWAYS_OFF
+    interlock: &interlock_group [zone_1,zone_2,zone_3,zone_4]
+    internal: True
+    on_turn_on:
+      - switch.turn_on: led1
+      - delay: 20 min
+      - switch.turn_off: zone_1
+    on_turn_off:
+      - switch.turn_off: led1
+  # Zadní 1
+  - platform: gpio
+    pin: 
+      number: 19
+      inverted: true
+    name: "Zone 2"
+    id: zone_2
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+    internal: True
+    on_turn_on:
+      - switch.turn_on: led2
+      - delay: 30 min
+      - switch.turn_off: zone_2
+    on_turn_off:
+      - switch.turn_off: led2
+  # Zadní 2
+  - platform: gpio
+    pin: 
+      number: 17
+      inverted: true
+    name: "Zone 3"
+    id: zone_3
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+    internal: True
+    on_turn_on:
+      - switch.turn_on: led3
+      - delay: 30 min
+      - switch.turn_off: zone_3
+    on_turn_off:
+      - switch.turn_off: led3
+  # Přední
+  - platform: gpio
+    pin: 
+      number: 16
+      inverted: true
+    name: "Zone 4"
+    id: zone_4
+    restore_mode: ALWAYS_OFF
+    interlock: *interlock_group
+    internal: True
+    on_turn_on:
+      - switch.turn_on: led4
+      - delay: 20 min
+      - switch.turn_off: zone_4
+    on_turn_off:
+      - switch.turn_off: led4
+
+  # HA Kapénková
+  - platform: template
+    name: "Zone 1"
+    id: ha_zone_1
+    lambda: |-
+      if (id(zone_1).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      if:
+        condition:
+          binary_sensor.is_off: ha_status
+        then:
+          - select.set:
+              id: controller_status
+              option: "ZoneSettings"
+          - number.set:
+              id: selected_zone
+              value: 1
+          - script.execute: start_stop
+    turn_off_action:
+      if:
+        condition:
+          lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            if ( (status == "InternalPRGRunning") || (status == "HAPRGRunning") ) { 
+              return false;
+            } else {
+              return true;
+            }
+        then:
+          - script.execute: my_abort
+  # HA Zadní 1
+  - platform: template
+    name: "Zone 2"
+    id: ha_zone_2
+    lambda: |-
+      if (id(zone_2).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      if:
+        condition:
+          binary_sensor.is_off: ha_status
+        then:
+          - select.set:
+              id: controller_status
+              option: "ZoneSettings"
+          - number.set:
+              id: selected_zone
+              value: 2
+          - script.execute: start_stop
+    turn_off_action:
+      if:
+        condition:
+          lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            if ( (status == "InternalPRGRunning") || (status == "HAPRGRunning") ) { 
+              return false;
+            } else {
+              return true;
+            }
+        then:
+          - script.execute: my_abort
+  # HA Zadní 2
+  - platform: template
+    name: "Zone 3"
+    id: ha_zone_3
+    lambda: |-
+      if (id(zone_3).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      if:
+        condition:
+          binary_sensor.is_off: ha_status
+        then:
+          - select.set:
+              id: controller_status
+              option: "ZoneSettings"
+          - number.set:
+              id: selected_zone
+              value: 3
+          - script.execute: start_stop
+    turn_off_action:
+      if:
+        condition:
+          lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            if ( (status == "InternalPRGRunning") || (status == "HAPRGRunning") ) { 
+              return false;
+            } else {
+              return true;
+            }
+        then:
+          - script.execute: my_abort
+  # HA Přední
+  - platform: template
+    name: "Zone 4"
+    id: ha_zone_4
+    lambda: |-
+      if (id(zone_4).state) {
+        return true;
+      } else {
+        return false;
+      }
+    turn_on_action:
+      if:
+        condition:
+          binary_sensor.is_off: ha_status
+        then:
+          - select.set:
+              id: controller_status
+              option: "ZoneSettings"
+          - number.set:
+              id: selected_zone
+              value: 4
+          - script.execute: start_stop
+    turn_off_action:
+      if:
+        condition:
+          lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            if ( (status == "InternalPRGRunning") || (status == "HAPRGRunning") ) { 
+              return false;
+            } else {
+              return true;
+            }
+        then:
+          - script.execute: my_abort
+
+binary_sensor:
+  # Zone switch
+  - platform: tm1638
+    id: button1
+    key: 0
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      then:
+        - script.execute: switch_zone
+        - script.execute: set_last_action
+
+  # minus
+  - platform: tm1638
+    id: button2
+    key: 1
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+     then:
+        - script.execute: decrease_threshold
+        - script.execute: set_last_action
+
+  # plus
+  - platform: tm1638
+    id: button3
+    key: 2
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+     then:
+        - script.execute: increase_threshold
+        - script.execute: set_last_action
+
+  # Save
+  - platform: tm1638
+    id: button4
+    key: 3
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+     then:
+        - script.execute: save_threshold
+        - script.execute: set_last_action
+    on_release:
+      then:
+        - delay: 500ms
+        - switch.turn_off: led5
+
+  # Start stop
+  - platform: tm1638
+    id: button5
+    key: 4
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+     then:
+        - script.execute: start_stop
+        - script.execute: set_last_action
+
+  # Program start
+  - platform: tm1638
+    id: button6
+    key: 5
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+     then:
+      - script.execute: set_last_action
+      - lambda: |-
+          std::string status = id(controller_status).state.c_str();
+          if ((status != "HAPRGRunning") && (status != "InternalPRGRunning")) {
+
+            auto callS = id(controller_status).make_call();
+            callS.set_option("InternalPRG");
+            callS.perform();
+
+          }
+
+  # HA info
+  - platform: tm1638
+    id: button7
+    key: 6
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+     then:      
+      - script.execute: set_last_action
+      - lambda: |-
+          std::string status = id(controller_status).state.c_str();
+          if ((status != "HAPRGRunning") && (status != "InternalPRGRunning")) {
+
+            auto callS = id(controller_status).make_call();
+            callS.set_option("HAPRG");
+            callS.perform();
+
+          }
+
+
+  # ESC
+  - platform: tm1638
+    id: button8
+    key: 7
+    internal: True
+    filters:
+      - delayed_on: 10ms
+    on_click:
+    - min_length: 3s
+      max_length: 10s
+      then:
+        - script.execute: my_abort
+    on_press:
+      then:
+        - switch.turn_on: led8
+        - delay: 3s
+        - switch.turn_off: led8
+    on_release:
+      then:
+        - switch.turn_off: led8
+
+  # Status
+  - platform: template
+    name: "Status"
+    id: ha_status
+    lambda: |-
+      std::string status = id(controller_status).state.c_str();
+      if ((status == "ZoneRunning") || (status == "InternalPRGRunning") || (status == "HAPRGRunning")) {
+        return true;
+      } else {
+        return false;
+      }
+
+button:
+  - platform: template
+    name: "Stop"
+    id: stop_btn
+    icon: "mdi:alert-octagon-outline"
+    on_press:
+        - script.execute: my_abort
+  - platform: template
+    name: "Program start"
+    id: start_btn
+    icon: "mdi:timer-play-outline"
+    on_press:
+      then:
+        - lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            if (status != "HAPRGRunning") {
+
+              if ((status == "ZoneRunning") || (status == "InternalPRGRunning")) {
+                id(my_abort).execute();
+              }
+
+              auto callS = id(controller_status).make_call();
+              callS.set_option("HAPRG");
+              callS.perform();
+              id(program).execute();
+            }
+
+
+script:
+    - id: switch_zone
+      then:
+        - lambda: |-
+            std::string status = id(controller_status).state.c_str();
+
+            if ((status != "ZoneRunning") && (status != "InternalPRGRunning") && (status != "HAPRGRunning")) {
+
+              int zone = id(selected_zone).state;
+              int threshold;
+
+              auto callS = id(controller_status).make_call();
+              callS.set_option("ZoneSettings");
+              callS.perform();
+
+              zone++;
+              if (zone > 4) {
+                zone = 1;
+              }
+              switch (zone) {
+                case 1:
+                  threshold = id(threshold_time_1).state;
+                  break;
+                case 2:
+                  threshold = id(threshold_time_2).state;
+                  break;
+                case 3:
+                  threshold = id(threshold_time_3).state;
+                  break;
+                case 4:
+                  threshold = id(threshold_time_4).state;
+                  break;
+              }
+
+              id(threshold_value) = threshold;
+              auto callN = id(selected_zone).make_call();
+              callN.set_value(zone);
+              callN.perform();
+
+            }
+
+    - id: save_threshold
+      then:
+        - lambda: |-
+
+            std::string status = id(controller_status).state.c_str();
+            if (status == "ZoneSettings") {
+
+              int zone = id(selected_zone).state;
+              if (zone > 0) {
+                int newThreshold = id(threshold_value);
+                id(led5).turn_on();
+                switch (zone) {
+                  case 1:
+                    {
+                      auto call = id(threshold_time_1).make_call();
+                      call.set_value(newThreshold);
+                      call.perform();
+                      break;
+                    }
+                  case 2:
+                    {
+                      auto call = id(threshold_time_2).make_call();
+                      call.set_value(newThreshold);
+                      call.perform();
+                      break;
+                    }
+                  case 3:
+                    {
+                      auto call = id(threshold_time_3).make_call();
+                      call.set_value(newThreshold);
+                      call.perform();
+                      break;
+                    }
+                  case 4:
+                    {
+                      auto call = id(threshold_time_4).make_call();
+                      call.set_value(newThreshold);
+                      call.perform();
+                      break;
+                    }
+                }
+              }
+
+            }
+
+    - id: set_last_action
+      then:
+        - lambda: |-
+            id(active_display) = true;
+            id(last_action) = id(my_time).now().timestamp;
+
+    - id: increase_threshold
+      then:
+        - lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            if (status == "ZoneSettings") {
+              if (id(threshold_value) < 30 && id(selected_zone).state != 0) {
+                id(threshold_value)++;
+              }
+            }
+
+    - id: decrease_threshold
+      then:
+        - lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            if (status == "ZoneSettings") {
+              if (id(threshold_value) > 0 && id(selected_zone).state != 0) {
+                id(threshold_value)--;
+              }
+            }
+
+    - id: my_abort
+      then:
+        - lambda: |-
+            id(zone_1).turn_off();
+            id(zone_2).turn_off();
+            id(zone_3).turn_off();
+            id(zone_4).turn_off();
+            id(led5).turn_off();
+            id(led6).turn_off();
+            id(led7).turn_off();
+            id(ha_txt_status).publish_state("off");
+            auto callN = id(selected_zone).make_call();
+            callN.set_value(0);
+            callN.perform();
+
+            id(timer)[0] = 0;
+            id(timer)[1] = 0;
+            id(timer)[2] = 0;
+            id(timer)[4] = 0;
+
+            auto callS = id(controller_status).make_call();
+            callS.set_option("OFF");
+            callS.perform();
+
+    - id: start_stop
+      then:
+        - lambda: |-
+            std::string status = id(controller_status).state.c_str();
+
+            if (status == "ZoneSettings") {
+              int zone = id(selected_zone).state;
+              
+              if (zone > 0 && zone < 5) {
+                int threshold;
+
+                auto callS = id(controller_status).make_call();
+                callS.set_option("ZoneRunning");
+                callS.perform();
+
+                switch (zone) {
+                  case 1:
+                    threshold = id(threshold_time_1).state;
+                    id(zone_1).turn_on();
+                    id(ha_txt_status).publish_state("Zóna 1 spuštěna");
+                    break;
+                  case 2:
+                    threshold = id(threshold_time_2).state;
+                    id(zone_2).turn_on();
+                    id(ha_txt_status).publish_state("Zóna 2 spuštěna");
+                    break;
+                  case 3:
+                    threshold = id(threshold_time_3).state;
+                    id(zone_3).turn_on();
+                    id(ha_txt_status).publish_state("Zóna 3 spuštěna");
+                    break;
+                  case 4:
+                    threshold = id(threshold_time_4).state;
+                    id(zone_4).turn_on();
+                    id(ha_txt_status).publish_state("Zóna 3 spuštěna");
+                    break;
+                }
+                
+                id(threshold_value) = threshold;
+                id(timer)[0] = id(my_time).now().timestamp;
+                id(timer)[1] = id(my_time).now().timestamp + (threshold*60);
+                id(timer)[2] = threshold;
+              }
+
+            } else if (status == "InternalPRG") {
+              id(program).execute();
+            }
+
+    - id: program
+      then:
+        - lambda: |-
+            std::string status = id(controller_status).state.c_str();
+            int zone = id(selected_zone).state;
+            int current_time = id(my_time).now().timestamp;
+
+            if ((status == "InternalPRG") || (status == "HAPRG")) {
+
+              int threshold2 = id(threshold_time_2).state;
+              int threshold3 = id(threshold_time_3).state;
+              int threshold4 = id(threshold_time_4).state;
+
+              id(timer)[0] = current_time;
+              id(timer)[2] = 0;
+              id(timer)[3] = (threshold2+threshold3+threshold4);
+
+              auto callN = id(selected_zone).make_call();
+              callN.set_value(2);
+              callN.perform();
+
+              if (status == "InternalPRG") {
+                id(ha_txt_status).publish_state("Interní program");
+                auto callS = id(controller_status).make_call();
+                callS.set_option("InternalPRGRunning");
+                callS.perform();
+                id(led6).turn_on();
+                status = "InternalPRGRunning";
+              } else {
+                id(ha_txt_status).publish_state("HA program");
+                auto callS = id(controller_status).make_call();
+                callS.set_option("HAPRGRunning");
+                callS.perform();
+                status = "HAPRGRunning";
+                id(led7).turn_on();
+              }
+
+              if (threshold2 > 0) {
+                id(timer)[1] = current_time + (threshold2*60);
+                id(zone_2).turn_on();
+              } else {
+                id(timer)[1] = 0;
+                zone = 2;
+              }
+
+            }
+
+            
+            if ((status == "InternalPRGRunning") || (status == "HAPRGRunning")) {
+
+              if (current_time >= id(timer)[1]) {
+
+                if (zone == 2) {
+
+                      id(zone_2).turn_off();
+                      int threshold = id(threshold_time_3).state;
+
+                      auto callN = id(selected_zone).make_call();
+                      callN.set_value(3);
+                      callN.perform();
+
+                      if (threshold > 0) {
+                        id(timer)[1] = current_time + (threshold*60);
+                        id(zone_3).turn_on();
+                      } else {
+                        zone = 3;
+                      }
+
+                }
+                
+                if (zone == 3) {
+                      id(zone_3).turn_off();
+                      int threshold = id(threshold_time_4).state;
+
+                      auto callN = id(selected_zone).make_call();
+                      callN.set_value(4);
+                      callN.perform();
+
+                      if (threshold > 0) {
+                        id(timer)[1] = current_time + (threshold*60);
+                        id(zone_4).turn_on();
+                      } else {
+                        zone = 4;
+                      }
+
+                }
+
+                if (zone == 4) {                      
+                      id(my_abort).execute();
+
+                }
+
+              }
+
+            }
+
+
+interval:
+  - interval: 10sec
+    then:
+      - lambda: |-
+          int current_time = id(my_time).now().timestamp;
+          std::string status = id(controller_status).state.c_str();
+          if ((current_time - id(last_action)) > 100) {
+            id(active_display) = false;
+          }
+
+  - interval: 1s
+    then:
+      - lambda: |-
+          int current_time = id(my_time).now().timestamp;
+          std::string status = id(controller_status).state.c_str();
+          if ((status == "ZoneRunning")) {
+
+            if (current_time >= id(timer)[1]) {
+              id(my_abort).execute();
+            } else {
+              int remaining = ceil((id(timer)[1] - current_time)/60);
+              id(timer)[2] = remaining;
+            }
+
+          } else if ((status == "InternalPRGRunning") || (status == "HAPRGRunning")) {
+
+            if ((current_time >= id(timer)[1]) && (id(program).is_running() == false)) {
+              id(program).execute();
+            } 
+            int duration = round((current_time - id(timer)[0])/60);
+            id(timer)[2] = duration;
+
+          }
+
+
