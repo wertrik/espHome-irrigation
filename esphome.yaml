@@ -177,12 +177,12 @@ display:
       }
 
 switch:
-  #zona 1 aktivní
+  #zona 1 active
   - platform: tm1638
     id: led1
     led: 0
     internal: True
-  #zona 2 aktivní
+  #zona 2 active
   - platform: tm1638
     id: led2
     led: 1
@@ -192,12 +192,12 @@ switch:
     id: led3
     led: 2
     internal: True
-  #zona 4 aktivní
+  #zona 4 active
   - platform: tm1638
     id: led4
     led: 3
     internal: True
-  # ulozeni ok
+  # save ok
   - platform: tm1638
     id: led5
     led: 4
@@ -207,12 +207,12 @@ switch:
     id: led6
     led: 5
     internal: True
-  #HA aktivní
+  #HA active
   - platform: tm1638
     id: led7
     led: 6
     internal: True
-  #program aktivní
+  #program active
   - platform: tm1638
     id: led8
     led: 7
@@ -234,7 +234,7 @@ switch:
       - switch.turn_off: zone_1
     on_turn_off:
       - switch.turn_off: led1
-  # Zadní 1
+
   - platform: gpio
     pin: 
       number: 19
@@ -250,7 +250,7 @@ switch:
       - switch.turn_off: zone_2
     on_turn_off:
       - switch.turn_off: led2
-  # Zadní 2
+
   - platform: gpio
     pin: 
       number: 17
@@ -266,7 +266,7 @@ switch:
       - switch.turn_off: zone_3
     on_turn_off:
       - switch.turn_off: led3
-  # Přední
+
   - platform: gpio
     pin: 
       number: 16
@@ -283,7 +283,6 @@ switch:
     on_turn_off:
       - switch.turn_off: led4
 
-  # HA Kapénková
   - platform: template
     name: "Zone 1"
     id: ha_zone_1
@@ -317,7 +316,7 @@ switch:
             }
         then:
           - script.execute: my_abort
-  # HA Zadní 1
+
   - platform: template
     name: "Zone 2"
     id: ha_zone_2
@@ -351,7 +350,7 @@ switch:
             }
         then:
           - script.execute: my_abort
-  # HA Zadní 2
+
   - platform: template
     name: "Zone 3"
     id: ha_zone_3
@@ -385,7 +384,7 @@ switch:
             }
         then:
           - script.execute: my_abort
-  # HA Přední
+
   - platform: template
     name: "Zone 4"
     id: ha_zone_4
