@@ -88,7 +88,7 @@ number:
     id: "threshold_time_1"
     optimistic: true
     min_value: 0
-    max_value: 20
+    max_value: 40
     step: 1
     mode: slider
     unit_of_measurement: "min"
@@ -100,7 +100,7 @@ number:
     id: "threshold_time_2"
     optimistic: true
     min_value: 0
-    max_value: 30
+    max_value: 40
     step: 1
     mode: slider
     unit_of_measurement: "min"
@@ -112,7 +112,7 @@ number:
     id: "threshold_time_3"
     optimistic: true
     min_value: 0
-    max_value: 30
+    max_value: 40
     step: 1
     mode: slider
     unit_of_measurement: "min"
@@ -124,7 +124,7 @@ number:
     id: "threshold_time_4"
     optimistic: true
     min_value: 0
-    max_value: 30
+    max_value: 40
     step: 1
     mode: slider
     unit_of_measurement: "min"
@@ -230,7 +230,7 @@ switch:
     internal: True
     on_turn_on:
       - switch.turn_on: led1
-      - delay: 20 min
+      - delay: 40 min
       - switch.turn_off: zone_1
     on_turn_off:
       - switch.turn_off: led1
@@ -246,7 +246,7 @@ switch:
     internal: True
     on_turn_on:
       - switch.turn_on: led2
-      - delay: 30 min
+      - delay: 40 min
       - switch.turn_off: zone_2
     on_turn_off:
       - switch.turn_off: led2
@@ -262,7 +262,7 @@ switch:
     internal: True
     on_turn_on:
       - switch.turn_on: led3
-      - delay: 30 min
+      - delay: 40 min
       - switch.turn_off: zone_3
     on_turn_off:
       - switch.turn_off: led3
@@ -278,7 +278,7 @@ switch:
     internal: True
     on_turn_on:
       - switch.turn_on: led4
-      - delay: 20 min
+      - delay: 40 min
       - switch.turn_off: zone_4
     on_turn_off:
       - switch.turn_off: led4
